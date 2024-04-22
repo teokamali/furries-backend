@@ -3,6 +3,7 @@ import { Paginate } from 'src/decorators/paginate.decorator';
 import { PaginateInterceptor } from 'src/interceptors/paginate.interceptor';
 import { PaginateQuery } from 'src/types/paginate.types';
 import { CalculateReward } from './dto/calculate-reward.dto';
+import { ClaimAllDto } from './dto/claimAll.dto';
 import { GetUserNFTsDto } from './dto/nfts-list.dto';
 import { StakeDto } from './dto/stake.dto';
 import { UnStakeDto } from './dto/unStake.dto';
@@ -41,5 +42,9 @@ export class NftsController {
   @Post('stake')
   stakeNft(@Body() dto: StakeDto) {
     return this.nftsService.stake(dto);
+  }
+  @Post('claimAll')
+  claimAll(@Body() dto: ClaimAllDto) {
+    return this.nftsService.claimAll(dto);
   }
 }

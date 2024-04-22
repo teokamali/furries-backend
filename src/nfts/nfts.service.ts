@@ -13,8 +13,10 @@ import axios from 'axios';
 import { SolanaProvider } from 'src/solana-provider/solana-provider';
 import { StakeDetail } from 'src/types/global.types';
 import { PaginateQuery } from 'src/types/paginate.types';
+import { chunkArray } from 'src/util/chunk.util';
 import { paginate } from 'src/util/paginate.util';
 import { CalculateReward } from './dto/calculate-reward.dto';
+import { ClaimAllDto } from './dto/claimAll.dto';
 import { GetUserNFTsDto } from './dto/nfts-list.dto';
 import { StakeDto } from './dto/stake.dto';
 import { StackedNFTsList } from './dto/staked-nfts-list.dto';
@@ -419,6 +421,70 @@ export class NftsService {
     return {
       message: 'success',
       data: tr,
+    };
+  }
+
+  async claimAll(dto: ClaimAllDto) {
+    const { up } = dto;
+    const owner = new PublicKey(up);
+    const { programID, program, TOKEN_MINT_ACCOUNT, STAKING_DETAILS } =
+      this.solanaProvider;
+    const stakedNfts = await this.getStakedNFTsList(up);
+
+    const instructionGenerator = async (array: Metadata[]) => {
+      const instructions = [];
+      try {
+        for (const nfts of array) {
+          const { mintAddress } = nfts;
+          let token_account = associatedAddress({
+            mint: TOKEN_MINT_ACCOUNT,
+            owner,
+          });
+
+          let [staking_record] = PublicKey.findProgramAddressSync(
+            [
+              utils.bytes.utf8.encode('staking-record'),
+              STAKING_DETAILS.toBytes(),
+              mintAddress.toBytes(),
+            ],
+            programID,
+          );
+
+          let [token_authority] = findProgramAddressSync(
+            [
+              utils.bytes.utf8.encode('token-authority'),
+              STAKING_DETAILS.toBytes(),
+            ],
+            programID,
+          );
+
+          instructions.push(
+            await program.methods
+              .claim()
+              .accounts({
+                stakeDetails: STAKING_DETAILS,
+                stakingRecord: staking_record,
+                rewardMint: TOKEN_MINT_ACCOUNT,
+                rewardReceiveAccount: token_account,
+                tokenAuthority: token_authority,
+              })
+              .instruction(),
+          );
+        }
+      } catch (error) {
+        throw new InternalServerErrorException('Something went wrong!');
+      }
+      return instructions; // Return array of instructions for this chunk
+    };
+
+    const transactionInstructions = await instructionGenerator(stakedNfts);
+    // Call the function to start processing chunks and return array of instructions
+    const chunkedTransactions = chunkArray(transactionInstructions, 6);
+    const totalTransactions = chunkedTransactions.length;
+    return {
+      message: 'success',
+      transactionInstructions: chunkedTransactions,
+      totalTransactions,
     };
   }
 }
