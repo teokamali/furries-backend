@@ -7,9 +7,7 @@ async function bootstrap() {
   app.useGlobalPipes(new ValidationPipe());
 
   app.setGlobalPrefix(`api`);
-  app.enableCors({
-    allowedHeaders: ['api.furries.w3bstudio.com'],
-  });
+  app.enableCors();
 
   await app.listen(process.env.PORT ?? 8000);
 }
