@@ -27,6 +27,7 @@
     "@nestjs/core": "^10.0.0",
     "@nestjs/mapped-types": "*",
     "@nestjs/platform-express": "^10.0.0",
+    "@nestjs/throttler": "^5.1.2",
     "@project-serum/anchor": "^0.26.0",
     "@solana/web3.js": "^1.91.7",
     "axios": "^1.6.8",
