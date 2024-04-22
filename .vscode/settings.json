@@ -1,0 +1,14 @@
+{
+    "editor.codeActionsOnSave": {
+        "source.fixAll": "explicit",
+        "source.organizeImports": "explicit"
+    },
+    "cSpell.words": [
+        "devnet",
+        "Furries",
+        "metaplex",
+        "SYSVARINSTRUCTIONS",
+        "Unstakable",
+        "Unstake"
+    ]
+}
