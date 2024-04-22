@@ -4,6 +4,7 @@ import { PaginateInterceptor } from 'src/interceptors/paginate.interceptor';
 import { PaginateQuery } from 'src/types/paginate.types';
 import { CalculateReward } from './dto/calculate-reward.dto';
 import { GetUserNFTsDto } from './dto/nfts-list.dto';
+import { StakeDto } from './dto/stake.dto';
 import { UnStakeDto } from './dto/unStake.dto';
 import { NftsService } from './nfts.service';
 
@@ -36,5 +37,9 @@ export class NftsController {
   @Post('unstake')
   unstakeNft(@Body() dto: UnStakeDto) {
     return this.nftsService.unStake(dto);
+  }
+  @Post('stake')
+  stakeNft(@Body() dto: StakeDto) {
+    return this.nftsService.stake(dto);
   }
 }
