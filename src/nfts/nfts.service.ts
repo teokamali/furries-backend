@@ -1,7 +1,14 @@
 import { utils } from '@coral-xyz/anchor';
+import { associatedAddress } from '@coral-xyz/anchor/dist/cjs/utils/token';
 import { Metadata, Nft } from '@metaplex-foundation/js';
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
-import { PublicKey } from '@solana/web3.js';
+import {
+  Injectable,
+  InternalServerErrorException,
+  NotFoundException,
+} from '@nestjs/common';
+import { findProgramAddressSync } from '@project-serum/anchor/dist/cjs/utils/pubkey';
+import * as spl from '@solana/spl-token';
+import { ComputeBudgetProgram, PublicKey, Transaction } from '@solana/web3.js';
 import axios from 'axios';
 import { SolanaProvider } from 'src/solana-provider/solana-provider';
 import { StakeDetail } from 'src/types/global.types';
@@ -10,6 +17,7 @@ import { paginate } from 'src/util/paginate.util';
 import { CalculateReward } from './dto/calculate-reward.dto';
 import { GetUserNFTsDto } from './dto/nfts-list.dto';
 import { StackedNFTsList } from './dto/staked-nfts-list.dto';
+import { UnStakeDto } from './dto/unStake.dto';
 
 @Injectable()
 export class NftsService {
@@ -66,6 +74,7 @@ export class NftsService {
 
     return stakedNfts;
   }
+
   async getNftDetail(userPublickey: string, nftName: string) {
     const { programID, STAKING_DETAILS, program } = this.solanaProvider;
     const stakedNfts = await this.getStakedNFTsList(userPublickey);
@@ -172,6 +181,140 @@ export class NftsService {
       data: {
         reward: total / decimalNumber,
       },
+    };
+  }
+  async unStake(dto: UnStakeDto) {
+    const { nftName, up: pubkey } = dto;
+    const owner = new PublicKey(pubkey);
+
+    const {
+      STAKING_DETAILS,
+      programID,
+      metaplex,
+      TOKEN_MINT_ACCOUNT,
+      METADATA_PROGRAM,
+      program,
+      AUTH_PROGRAM,
+      SYSVARINSTRUCTIONS,
+      connection,
+    } = this.solanaProvider;
+    const stakedNfts = await this.getStakedNFTsList(pubkey);
+    const [nft_authority] = PublicKey.findProgramAddressSync(
+      [utils.bytes.utf8.encode('nft-authority'), STAKING_DETAILS.toBytes()],
+      programID,
+    );
+
+    const nft = stakedNfts.find((nft) => nft.name === nftName);
+
+    if (!nft || !owner) {
+      throw new NotFoundException('Nft Not Found');
+    }
+    const nft_mint = new PublicKey(nft.mintAddress);
+    const nft_By_mint = (await metaplex
+      .nfts()
+      .findByMint({ mintAddress: nft_mint })) as Nft;
+
+    const nft_custody = await spl.getAssociatedTokenAddress(
+      nft_mint,
+      nft_authority,
+      true,
+    );
+    const [staking_record] = PublicKey.findProgramAddressSync(
+      [
+        utils.bytes.utf8.encode('staking-record'),
+        STAKING_DETAILS.toBytes(),
+        nft_mint.toBytes(),
+      ],
+      programID,
+    );
+    const [token_authority] = findProgramAddressSync(
+      [utils.bytes.utf8.encode('token-authority'), STAKING_DETAILS.toBytes()],
+      programID,
+    );
+
+    const nft_token = await associatedAddress({
+      mint: nft_mint,
+      owner,
+    });
+
+    const user_token_address = await associatedAddress({
+      mint: TOKEN_MINT_ACCOUNT,
+      owner,
+    });
+
+    const [token_record] = findProgramAddressSync(
+      [
+        utils.bytes.utf8.encode('metadata'),
+        new PublicKey(METADATA_PROGRAM).toBytes(),
+        nft_mint.toBytes(),
+        utils.bytes.utf8.encode('token_record'),
+        nft_custody.toBytes(),
+      ],
+      new PublicKey(METADATA_PROGRAM),
+    );
+
+    const [token_record_dest] = findProgramAddressSync(
+      [
+        utils.bytes.utf8.encode('metadata'),
+        new PublicKey(METADATA_PROGRAM).toBytes(),
+        nft_mint.toBytes(),
+        utils.bytes.utf8.encode('token_record'),
+        nft_token.toBytes(),
+      ],
+      new PublicKey(METADATA_PROGRAM),
+    );
+
+    const token_account = associatedAddress({
+      mint: TOKEN_MINT_ACCOUNT,
+      owner,
+    });
+
+    const tr = new Transaction();
+    const claimInstruction = await program.methods
+      .claim()
+      .accounts({
+        stakeDetails: STAKING_DETAILS,
+        stakingRecord: staking_record,
+        rewardMint: TOKEN_MINT_ACCOUNT,
+        rewardReceiveAccount: token_account,
+        tokenAuthority: token_authority,
+      })
+      .instruction();
+    const tx = await program.methods
+      .unstake()
+      .accounts({
+        nftMetadata: nft_By_mint.metadataAddress,
+        nftEdition: nft_By_mint.edition.address,
+        stakeDetails: STAKING_DETAILS,
+        stakingRecord: staking_record,
+        nftAuthority: nft_authority,
+        nftCustody: nft_custody,
+        nftMint: nft_mint,
+        nftReceiveAccount: nft_token,
+        tokenRecord: token_record,
+        tokenRecordDest: token_record_dest,
+        metadataProgram: METADATA_PROGRAM,
+        authRules: nft.programmableConfig?.ruleSet,
+        authProgram: AUTH_PROGRAM,
+        sysvarInstructions: SYSVARINSTRUCTIONS,
+        //@ts-ignore
+        rewardMint: TOKEN_MINT_ACCOUNT,
+        rewardReceiveAccount: user_token_address,
+        tokenAuthority: token_authority,
+      })
+      .instruction();
+
+    tr.add(ComputeBudgetProgram.setComputeUnitLimit({ units: 300000 }));
+    tr.add(claimInstruction);
+    tr.add(tx);
+    tr.feePayer = new PublicKey(owner);
+    const recentBlockHash = await connection.getLatestBlockhash({
+      commitment: 'processed',
+    });
+    tr.recentBlockhash = recentBlockHash.blockhash;
+    return {
+      message: 'success',
+      data: tr,
     };
   }
 }

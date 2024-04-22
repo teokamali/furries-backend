@@ -15,12 +15,23 @@ export class SolanaProvider {
   public program: Program<Staking>;
   public programID: PublicKey;
   public STAKING_DETAILS: PublicKey;
+  public METADATA_PROGRAM: PublicKey;
+  public AUTH_PROGRAM: PublicKey;
+  public SYSVARINSTRUCTIONS: PublicKey;
+  public TOKEN_MINT_ACCOUNT: PublicKey;
   public wallet: Wallet;
 
   constructor() {
     const programID = new PublicKey(process.env.PROGRAM_ID ?? '');
     const STAKING_DETAILS = new PublicKey(process.env.STAKING_DETAILS ?? '');
-
+    const METADATA_PROGRAM = new PublicKey(process.env.METADATA_PROGRAM ?? '');
+    const AUTH_PROGRAM = new PublicKey(process.env.AUTH_PROGRAM ?? '');
+    const SYSVARINSTRUCTIONS = new PublicKey(
+      process.env.SYSVARINSTRUCTIONS ?? '',
+    );
+    const TOKEN_MINT_ACCOUNT = new PublicKey(
+      process.env.TOKEN_MINT_ACCOUNT ?? '',
+    );
     this.connection = new Connection(clusterApiUrl('devnet'));
     const mnemonic = process.env.PHRASE || '';
     const seed = mnemonicToSeedSync(mnemonic, ''); // (mnemonic, password)
@@ -35,5 +46,9 @@ export class SolanaProvider {
     this.provider = provider;
     this.programID = programID;
     this.STAKING_DETAILS = STAKING_DETAILS;
+    this.AUTH_PROGRAM = AUTH_PROGRAM;
+    this.METADATA_PROGRAM = METADATA_PROGRAM;
+    this.TOKEN_MINT_ACCOUNT = TOKEN_MINT_ACCOUNT;
+    this.SYSVARINSTRUCTIONS = SYSVARINSTRUCTIONS;
   }
 }

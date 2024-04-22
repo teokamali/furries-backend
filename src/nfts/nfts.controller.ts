@@ -1,9 +1,10 @@
-import { Body, Controller, Get, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Get, Post, UseInterceptors } from '@nestjs/common';
 import { Paginate } from 'src/decorators/paginate.decorator';
 import { PaginateInterceptor } from 'src/interceptors/paginate.interceptor';
 import { PaginateQuery } from 'src/types/paginate.types';
 import { CalculateReward } from './dto/calculate-reward.dto';
 import { GetUserNFTsDto } from './dto/nfts-list.dto';
+import { UnStakeDto } from './dto/unStake.dto';
 import { NftsService } from './nfts.service';
 
 @Controller('nfts')
@@ -31,5 +32,9 @@ export class NftsController {
   @Get('reward')
   getUserTotalReward(@Body() dto: CalculateReward) {
     return this.nftsService.calculateReward(dto);
+  }
+  @Post('unstake')
+  unstakeNft(@Body() dto: UnStakeDto) {
+    return this.nftsService.unStake(dto);
   }
 }
