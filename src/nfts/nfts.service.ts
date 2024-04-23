@@ -131,7 +131,7 @@ export class NftsService {
   }
 
   async stakedNFTsList(dto: StackedNFTsList, paginateQuery: PaginateQuery) {
-    const userStakedNftsWithMetaData: Nft[] = [];
+    const userStakedNftsWithMetaData = [];
     const stakedNfts = await this.getStakedNFTsList(dto.up);
     const { data: paginatedStakedNFTs, meta } = paginate(
       stakedNfts,
@@ -140,10 +140,17 @@ export class NftsService {
 
     for (const metadata of paginatedStakedNFTs) {
       try {
+        const nftDetail = await this.getNftDetail(dto.up, metadata.name).catch(
+          (err) => {
+            throw new InternalServerErrorException(err.message);
+          },
+        );
         await axios
           .get(metadata.uri)
           .then((res) => res.data)
-          .then((res: Nft) => userStakedNftsWithMetaData.push(res));
+          .then((res: Nft) =>
+            userStakedNftsWithMetaData.push({ ...res, detail: nftDetail }),
+          );
       } catch (error) {
         throw new InternalServerErrorException(error.message);
       }
