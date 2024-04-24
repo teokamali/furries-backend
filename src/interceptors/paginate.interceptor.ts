@@ -6,7 +6,6 @@ import {
   NestInterceptor,
 } from '@nestjs/common';
 import { Observable } from 'rxjs';
-import { map } from 'rxjs/operators';
 
 @Injectable()
 export class PaginateInterceptor implements NestInterceptor {
@@ -17,10 +16,12 @@ export class PaginateInterceptor implements NestInterceptor {
       page: parseInt(page, 10),
       limit: parseInt(limit, 10),
     };
-    return next.handle().pipe(
-      map((data) => ({
-        ...data,
-      })),
-    );
+    return next
+      .handle()
+      .pipe
+      // map((data) => ({
+      //   ...data,
+      // })),
+      ();
   }
 }

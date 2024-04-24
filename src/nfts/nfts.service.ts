@@ -54,19 +54,25 @@ export class NftsService {
         },
       ],
     });
-    const addresses = records.map((records) => records.pubkey);
-    let mintAddresses: PublicKey[] | [] = [];
 
-    for (const address of addresses) {
-      try {
-        await program.account.stakingRecord
-          .fetch(address)
-          .then((res) => (mintAddresses = [...mintAddresses, res.nftMint]));
-      } catch (err) {
-        console.log({ address: address.toString(), err: err });
-      }
-    }
+    const addresses = records
+      .map((records) => records.pubkey)
+      .filter(
+        (address) =>
+          address.toBase58() !== 'G1FuBDRsuMH88wpbFu3nMzHMsm9TtBEmQRKPSwCVhfGd',
+      );
+
+    const StakingDetails = (await program.account.stakingRecord
+      .fetchMultiple(addresses)
+      .catch((err) => {
+        console.log({ err: err.message });
+      })
+      .then((res) => res)) as StakeDetail[];
+
+    let mintAddresses: PublicKey[] = StakingDetails.map((det) => det.nftMint);
+
     let stakedNfts: Metadata[] = [];
+
     await metaplex
       .nfts()
       .findAllByMintList({ mints: mintAddresses })
@@ -78,22 +84,14 @@ export class NftsService {
     return stakedNfts;
   }
 
-  async getNftDetail(userPublickey: string, nftName: string) {
+  async getNftDetail(mint: PublicKey) {
     const { programID, STAKING_DETAILS, program } = this.solanaProvider;
-    const stakedNfts = await this.getStakedNFTsList(userPublickey);
-
-    const nft = stakedNfts.find((nft) => nft.name === nftName);
-
-    if (!nft) {
-      return;
-    }
-    const nft_mint = new PublicKey(nft.mintAddress);
 
     const [staking_record] = PublicKey.findProgramAddressSync(
       [
         utils.bytes.utf8.encode('staking-record'),
         STAKING_DETAILS.toBytes(),
-        nft_mint.toBytes(),
+        mint.toBytes(),
       ],
       programID,
     );
@@ -138,9 +136,9 @@ export class NftsService {
       paginateQuery,
     );
 
-    for (const metadata of paginatedStakedNFTs) {
+    for (const metadata of paginatedStakedNFTs as Metadata[]) {
       try {
-        const nftDetail = await this.getNftDetail(dto.up, metadata.name).catch(
+        const nftDetail = await this.getNftDetail(metadata.mintAddress).catch(
           (err) => {
             throw new InternalServerErrorException(err.message);
           },
@@ -168,11 +166,10 @@ export class NftsService {
     const BASE_REWARD = process.env.BASE_REWARD || 500;
     const DECIMAL = process.env.DECIMAL || 5;
     const decimalNumber = Math.pow(10, +DECIMAL);
-
     const stakedNfts = await this.getStakedNFTsList(dto.up);
     for (const nft of stakedNfts) {
       try {
-        const nftDetail = await this.getNftDetail(dto.up, nft.name);
+        const nftDetail = await this.getNftDetail(nft.mintAddress);
         if (nftDetail) {
           const lastClaimed = nftDetail.lastClaimed.toNumber() * 1000; // Convert to milliseconds
           const now = new Date().getTime();

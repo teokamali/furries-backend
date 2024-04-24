@@ -1,7 +1,7 @@
 import { AnchorProvider, Program, Provider, Wallet } from '@coral-xyz/anchor';
 import { Metaplex, keypairIdentity } from '@metaplex-foundation/js';
 import { Injectable } from '@nestjs/common';
-import { Connection, Keypair, PublicKey, clusterApiUrl } from '@solana/web3.js';
+import { Connection, Keypair, PublicKey } from '@solana/web3.js';
 import { mnemonicToSeedSync } from 'bip39';
 import { StakingIDL } from 'src/program/idl';
 import { Staking } from 'src/types/stakingIDL';
@@ -32,7 +32,12 @@ export class SolanaProvider {
     const TOKEN_MINT_ACCOUNT = new PublicKey(
       process.env.TOKEN_MINT_ACCOUNT ?? '',
     );
-    this.connection = new Connection(clusterApiUrl('devnet'));
+    // this.connection = new Connection(clusterApiUrl('devnet'));
+    this.connection = new Connection(
+      'https://devnet.helius-rpc.com/?api-key=4bae2ab2-c0ab-4049-a79f-ece9fb91b312',
+      { commitment: 'confirmed' },
+    );
+
     const mnemonic = process.env.PHRASE || '';
     const seed = mnemonicToSeedSync(mnemonic, ''); // (mnemonic, password)
     const keypair = Keypair.fromSeed(seed.slice(0, 32));
