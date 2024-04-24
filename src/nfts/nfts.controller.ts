@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Post, UseInterceptors } from '@nestjs/common';
+import { Body, Controller, Post, UseInterceptors } from '@nestjs/common';
 import { Paginate } from 'src/decorators/paginate.decorator';
 import { PaginateInterceptor } from 'src/interceptors/paginate.interceptor';
 import { PaginateQuery } from 'src/types/paginate.types';
@@ -13,7 +13,7 @@ import { NftsService } from './nfts.service';
 export class NftsController {
   constructor(private readonly nftsService: NftsService) {}
   // get All user nfts by user public key
-  @Get('list')
+  @Post('list')
   @UseInterceptors(PaginateInterceptor)
   getUserNfts(
     @Paginate() pagination: PaginateQuery,
@@ -22,7 +22,7 @@ export class NftsController {
     return this.nftsService.nftList(dto, pagination);
   }
 
-  @Get('list/staked')
+  @Post('list/staked')
   @UseInterceptors(PaginateInterceptor)
   getUserStakedNFTs(
     @Paginate() pagination: PaginateQuery,
@@ -31,7 +31,7 @@ export class NftsController {
     return this.nftsService.stakedNFTsList(dto, pagination);
   }
 
-  @Get('reward')
+  @Post('reward')
   getUserTotalReward(@Body() dto: CalculateReward) {
     return this.nftsService.calculateReward(dto);
   }
